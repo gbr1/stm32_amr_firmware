@@ -25,6 +25,7 @@
 #include "board_pins.h"
 #include "motorcontroller.h"
 #include "ucPack.h"
+#include "imu.h"
 
 ucPack packeter(100,65,35);
 
@@ -35,6 +36,7 @@ float f1,f2,f3,f4;
 
 unsigned long timer_send = 0;
 unsigned long timer_motor= 0;
+unsigned long timer_imu= 0;
 unsigned long timer_s= 0;
 
 int cf=10;
@@ -49,6 +51,8 @@ float ref=0.0;
 
 int state=0;
 
+Imu mpu(I2C_SDA,I2C_SCL);
+
 void setup() { 
   
   pinMode(LED_BUILTIN,OUTPUT);
@@ -58,16 +62,16 @@ void setup() {
   digitalWrite(LED_BUILTIN,HIGH);
   //pinMode(BATTERY_PIN, INPUT_ANALOG);
 
-  serial_port.begin(115200);
-
-  //1ms interrupt enabled
-  
+  serial_port.begin(115200);  
   
   motorA.init();
   motorB.init();
   motorC.init();
   motorD.init();
 
+  //init mpu6050
+  mpu.initialize();
+  
   systick_attach_callback(tick); 
   
 }
@@ -139,6 +143,14 @@ void loop() {
   }
 
   */
+
+  if (timer_imu>=10){ 
+    mpu.updateData(); 
+    float ff=0.0;
+    uint8_t dim = packeter.packetC8F('i',mpu.getAccY(),-mpu.getAccX(),mpu.getAccZ(),mpu.getGyroY(),-mpu.getGyroX(),mpu.getGyroZ(),mpu.getTemp(),ff);
+    serial_port.write(packeter.msg,dim);
+    timer_imu=0;
+  }
   
   
   while(serial_port.available()>0){
@@ -178,6 +190,6 @@ void updateMotors(){
 void tick(void){
   timer_motor++;
   timer_send++;
-  //timer_s++;
+  timer_imu++;
   updateMotors();
 }

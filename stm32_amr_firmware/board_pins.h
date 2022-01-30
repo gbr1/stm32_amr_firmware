@@ -32,6 +32,9 @@
 
 #define BATTERY_PIN PA5
 
+#define I2C_SDA PB10
+#define I2C_SCL PB11
+
 //motor A encoder is associated to TIM2; must call afio_remap(AFIO_REMAP_TIM2_FULL); & enableDebugPorts();
 #define MOTOR_A_PWM PC9
 #define MOTOR_A_IN1 PD2
