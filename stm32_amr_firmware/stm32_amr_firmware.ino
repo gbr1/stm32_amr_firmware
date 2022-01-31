@@ -25,6 +25,7 @@
 #include "board_pins.h"
 #include "motorcontroller.h"
 #include "ucPack.h"
+#include "imu.h"
 
 ucPack packeter(100,65,35);
 
@@ -35,6 +36,7 @@ float f1,f2,f3,f4;
 
 unsigned long timer_send = 0;
 unsigned long timer_motor= 0;
+unsigned long timer_imu= 0;
 unsigned long timer_s= 0;
 
 int cf=10;
@@ -49,6 +51,8 @@ float ref=0.0;
 
 int state=0;
 
+Imu mpu(I2C_SDA,I2C_SCL);
+
 void setup() { 
   
   pinMode(LED_BUILTIN,OUTPUT);
@@ -58,15 +62,15 @@ void setup() {
   digitalWrite(LED_BUILTIN,HIGH);
   //pinMode(BATTERY_PIN, INPUT_ANALOG);
 
-  serial_port.begin(115200);
-
-  //1ms interrupt enabled
-  
+  serial_port.begin(115200);  
   
   motorA.init();
   motorB.init();
   motorC.init();
   motorD.init();
+
+  //init mpu6050
+  mpu.initialize(); //this require 3s
 
   systick_attach_callback(tick); 
   
@@ -74,71 +78,27 @@ void setup() {
 
 
 void loop() {
-  /*
-  if (timer_send>10){ 
-    uint8_t dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
-    serial_port.write(packeter.msg,dim);
-    timer_send=0;
-  }
-  */
-
+  //joint publisher
   if (timer_send>=10){ 
-    
     uint8_t dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
     serial_port.write(packeter.msg,dim);
-    
-    /*
-    serial_port.print(ref);
-    serial_port.print(" ");
-    serial_port.println(motorC.getRadAtS());
-    */
     timer_send=0;
   }
-/*
-  if (timer_s>=5000){
-    if (state==0){
-      ref=0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
 
-    if (state==1){
-      ref=3.8;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
+  //imu publisher
+  if (timer_imu>=10){ 
+    mpu.updateData(); 
+    /*
+    if ((mpu.getGyroX()==0)&&(mpu.getGyroY()==0)&&(mpu.getGyroZ()==0)){
+      mpu.resetPaths();
+      mpu.updateData();
     }
-
-    if (state==2){
-      ref=-3.8;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    if (state==3){
-      ref=5.0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    if (state==4){
-      ref=-5.0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    state++;
-    if (state==5){
-      state=0;
-    }
-    timer_s=0;
+    */
+    float ff=0.0;
+    uint8_t dim = packeter.packetC8F('i',mpu.getAccY(),-mpu.getAccX(),mpu.getAccZ(),mpu.getGyroY(),-mpu.getGyroX(),mpu.getGyroZ(),mpu.getTemp(),ff);
+    serial_port.write(packeter.msg,dim);
+    timer_imu=0;
   }
-
-  */
   
   
   while(serial_port.available()>0){
@@ -167,7 +127,6 @@ void updateMotors(){
     motorC.update();
     motorD.update();
     digitalWrite(LED_BUILTIN,HIGH);
-    //serial_port.println(micros()-t);
     timer_motor=0;
   }
 }
@@ -178,6 +137,6 @@ void updateMotors(){
 void tick(void){
   timer_motor++;
   timer_send++;
-  //timer_s++;
+  timer_imu++;
   updateMotors();
 }

@@ -13,7 +13,7 @@ left_rear_joint (A)  +-------+ right_rear_joint (D)
 
 ## How to install the stm32duino core
 
-1. Install Arduino IDE (tested on ide 2 beta10);
+1. Install Arduino IDE (tested on IDE 2 beta10 and IDE 1.8.13);
 2. go into preferences and add `http://dan.drown.org/stm32duino/package_STM32duino_index.json` 
 3. in board manager install stm32duino core for **STM32F1** boards
 4. open terminal and type `$``cd /home/$USER/.arduino15/packages/stm32duino/tools/stm32tools/2021.5.31/linux/`
@@ -35,12 +35,10 @@ If you are on linux you need an STLINK v2 and you need to:<br>
 3. select `tools -> upload methos -> serial`
 4. press upload
 
-
-
-
-
 *NOTE: if you encounter some issues on uploading, try to select `tools -> variant -> STM32F103RE`*
 
-*NOTE: it may necessary to erase memory of stm32 or load an empty program from serial if the board is bricked.*
+*NOTE: it may necessary to erase memory of stm32 or load an empty program from serial if the board is bricked (a blink is provided in bin folder).*
+
+*NOTE: is imu returns all zeros, reset the board*
 
 > ***Copyright © 2022 G. Bruno under MIT license***
