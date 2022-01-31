@@ -70,82 +70,30 @@ void setup() {
   motorD.init();
 
   //init mpu6050
-  mpu.initialize();
-  
+  mpu.initialize(); //this require 3s
+
   systick_attach_callback(tick); 
   
 }
 
 
 void loop() {
-  /*
-  if (timer_send>10){ 
-    uint8_t dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
-    serial_port.write(packeter.msg,dim);
-    timer_send=0;
-  }
-  */
-
+  //joint publisher
   if (timer_send>=10){ 
-    
     uint8_t dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
     serial_port.write(packeter.msg,dim);
-    
-    /*
-    serial_port.print(ref);
-    serial_port.print(" ");
-    serial_port.println(motorC.getRadAtS());
-    */
     timer_send=0;
   }
-/*
-  if (timer_s>=5000){
-    if (state==0){
-      ref=0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
 
-    if (state==1){
-      ref=3.8;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    if (state==2){
-      ref=-3.8;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    if (state==3){
-      ref=5.0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    if (state==4){
-      ref=-5.0;
-      systick_attach_callback(NULL);
-      motorC.setReference(ref);
-      systick_attach_callback(tick);
-    }
-
-    state++;
-    if (state==5){
-      state=0;
-    }
-    timer_s=0;
-  }
-
-  */
-
+  //imu publisher
   if (timer_imu>=10){ 
     mpu.updateData(); 
+    /*
+    if ((mpu.getGyroX()==0)&&(mpu.getGyroY()==0)&&(mpu.getGyroZ()==0)){
+      mpu.resetPaths();
+      mpu.updateData();
+    }
+    */
     float ff=0.0;
     uint8_t dim = packeter.packetC8F('i',mpu.getAccY(),-mpu.getAccX(),mpu.getAccZ(),mpu.getGyroY(),-mpu.getGyroX(),mpu.getGyroZ(),mpu.getTemp(),ff);
     serial_port.write(packeter.msg,dim);
@@ -179,7 +127,6 @@ void updateMotors(){
     motorC.update();
     motorD.update();
     digitalWrite(LED_BUILTIN,HIGH);
-    //serial_port.println(micros()-t);
     timer_motor=0;
   }
 }

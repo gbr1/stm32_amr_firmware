@@ -24,7 +24,7 @@
 #ifndef __IMU_H__
 #define __IMU_H__
 
-#include <SoftWire.h>
+#include <Wire.h>
 
 #define MPU_ADDR 0x68
 #define MPU_INIT 0x6B
@@ -35,36 +35,65 @@
 #define MPU_GYRO_SCALE 0x1B
 #define MPU_RAD 0.017453
 #define MPU_EG 9.80665
+#define MPU_DEVICE_RESET 0x80
+#define MPU_WHOAMI 0x75
 
 
 class Imu{
   private:
-    SoftWire SWire;
+    TwoWire SWire;
     int16_t acx,acy,acz,tmp,gyx,gyy,gyz;
     float acc_ratio, gyro_ratio;
     float MPU_A_SCALE[4]={2.0,4.0,8.0,16.0};
     float MPU_G_SCALE[4]={250.0,500.0,1000.0,2000.0};
+    uint8_t pin_sda,pin_scl;
 
   public:
-    Imu(const uint8_t pin_sda, const uint8_t pin_scl):SWire(pin_sda,pin_scl,SOFT_FAST){
+    Imu(const uint8_t pin_sda_, const uint8_t pin_scl_):SWire(I2C_DEVICE){
       acc_ratio=MPU_EG*MPU_A_SCALE[0]/32768.0;
       gyro_ratio=MPU_RAD*MPU_G_SCALE[0]/32768.0;
+      pin_sda=pin_sda_;
+      pin_scl=pin_scl_;
+    }
+
+    ~Imu(){
+      delete MPU_A_SCALE;
+      delete MPU_G_SCALE;
+    }
+
+    bool isWorking(){
+      SWire.beginTransmission(MPU_ADDR);
+      SWire.write(MPU_WHOAMI);
+      SWire.endTransmission(false);
+      SWire.requestFrom(MPU_ADDR,1);
+      uint8_t code= SWire.read();
+      if (code==0x68){
+        return true;
+      }
+      return false;
     }
 
     void initialize(){
+      pinMode(pin_sda,OUTPUT);
+      pinMode(pin_scl,OUTPUT);
+      digitalWrite(pin_sda,HIGH);
+      digitalWrite(pin_scl,HIGH);
+      delay(250);
+      
       SWire.setClock(400000);
       SWire.begin();
       SWire.beginTransmission(MPU_ADDR);
-      SWire.write(0x6B);
-      SWire.write(0);
+      SWire.write(MPU_INIT);
+      SWire.write(1);
       SWire.endTransmission(true);
+      delay(1000);
     }
     
     void updateData(){
       SWire.beginTransmission(MPU_ADDR);
       SWire.write(MPU_DATA);
       SWire.endTransmission(false);
-      SWire.requestFrom(MPU_ADDR,14);
+      SWire.requestFrom(MPU_ADDR,14,true);
       acx=SWire.read()<<8|SWire.read();
       acy=SWire.read()<<8|SWire.read();
       acz=SWire.read()<<8|SWire.read();
@@ -103,6 +132,19 @@ class Imu{
       SWire.write(scale<<3);
       SWire.endTransmission(true);
       gyro_ratio=MPU_RAD*MPU_G_SCALE[scale]/32768.0;
+    }
+
+    void resetPaths(){
+      SWire.beginTransmission(MPU_ADDR);
+      SWire.write(MPU_INIT);
+      SWire.write(MPU_DEVICE_RESET);
+      SWire.endTransmission(true);
+      delay(100);
+      SWire.beginTransmission(MPU_ADDR);
+      SWire.write(MPU_RESET_AGT);
+      SWire.write(7);
+      SWire.endTransmission(true);
+      delay(100);
     }
        
 };
