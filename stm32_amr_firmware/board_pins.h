@@ -31,6 +31,8 @@
 #define USE_STM32_HW_SERIAL //is Serial1
 
 #define BATTERY_PIN PA5
+#define BATTERY_CONSTANT 0.008832117
+#define BUTTON_PIN PC0
 
 #define I2C_SDA PB10
 #define I2C_SCL PB11

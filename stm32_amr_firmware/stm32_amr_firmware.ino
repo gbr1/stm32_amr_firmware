@@ -27,18 +27,25 @@
 #include "ucPack.h"
 #include "imu.h"
 
+// packeters to manage communication
 ucPack packeter(100,65,35);
 
-uint16_t t=0 ;
+uint16_t t=0;
 
+// code
 uint8_t c;
+// floats
 float f1,f2,f3,f4;
 
-unsigned long timer_send = 0;
-unsigned long timer_motor= 0;
-unsigned long timer_imu= 0;
-unsigned long timer_s= 0;
+unsigned long timer_send        = 0;
+unsigned long timer_motor       = 0;
+unsigned long timer_imu         = 0;
+unsigned long timer_battery     = 0;
 
+float battery=0.0;
+uint8_t battery_cycle=0;
+
+// timer in ms to update motors controllers
 int cf=10;
 
 
@@ -49,18 +56,33 @@ MotorController motorD(MOTOR_D_PWM, MOTOR_D_IN1, MOTOR_D_IN2, MOTOR_D_TIM, COUNT
 
 float ref=0.0;
 
-int state=0;
-
 Imu mpu(I2C_SDA,I2C_SCL);
 
 void setup() { 
   
   pinMode(LED_BUILTIN,OUTPUT);
+  pinMode(BUTTON_PIN,INPUT_PULLUP);
+
+  if (digitalRead(BUTTON_PIN)==LOW){
+    serial_port.begin(115200);
+    while(1){
+      serial_port.println("PROGRAMMING MODE");
+      digitalWrite(LED_BUILTIN,HIGH);
+      delay(500);
+      digitalWrite(LED_BUILTIN,LOW);
+      delay(500); 
+    }
+  }
+
+
+
+
+  
   afio_cfg_debug_ports(AFIO_DEBUG_SW_ONLY);
   afio_remap(AFIO_REMAP_TIM2_PARTIAL_1);
   
   digitalWrite(LED_BUILTIN,HIGH);
-  //pinMode(BATTERY_PIN, INPUT_ANALOG);
+  pinMode(BATTERY_PIN, INPUT_ANALOG);
 
   serial_port.begin(115200);  
   
@@ -99,12 +121,29 @@ void loop() {
     serial_port.write(packeter.msg,dim);
     timer_imu=0;
   }
+
+  // battery update
+  if (timer_battery>=10){
+    battery+=analogRead(BATTERY_PIN);
+    battery_cycle++;
+    timer_battery=0;
+  }
+
+  // battery publisher
+  if (battery_cycle>=100){
+    battery=battery*BATTERY_CONSTANT/100.0;
+    uint8_t dim = packeter.packetC1F('b',battery);
+    serial_port.write(packeter.msg,dim);
+    battery=0.0;
+    battery_cycle=0;
+  }
   
-  
+  // check serial
   while(serial_port.available()>0){
     packeter.buffer.push(serial_port.read()); 
   }
-  
+
+  // check if any command was sent
   while(packeter.checkPayload()){
       packeter.unpacketC4F(c,f1,f2,f3,f4);
       systick_attach_callback(NULL);
@@ -118,10 +157,10 @@ void loop() {
 }
 
 
+// motors controllers update
 void updateMotors(){
   if (timer_motor>=cf){
     digitalWrite(LED_BUILTIN,LOW);
-    //unsigned long t = micros();
     motorA.update();
     motorB.update();
     motorC.update();
@@ -133,10 +172,11 @@ void updateMotors(){
 
 
 
-
+// here timers are incremented and motors controllers are updated
 void tick(void){
   timer_motor++;
   timer_send++;
   timer_imu++;
+  timer_battery++;
   updateMotors();
 }
