@@ -1,9 +1,26 @@
-//
-//  ucPack.cpp
-//  ucPack
-//
-//  Created by Giovanni Bruno on 14/01/22.
-//
+/*
+ * The MIT License
+ *
+ * Copyright (c) 2022 Giovanni di Dio Bruno https://gbr1.github.io
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 
 #include "ucPack.h"
 
@@ -139,6 +156,24 @@ uint8_t ucPack::packetC1F(const uint8_t code, const float f){
 void ucPack::unpacketC1F(uint8_t &code, float &f){
     code=payload[0];
     memcpy(&f, payload+1, sizeof(float));
+}
+
+uint8_t ucPack::packetC2F(const uint8_t code, const float f1, const float f2){
+    msg[0]=start_index;
+    msg[1]=9;
+    msg[2]=code;
+    memcpy(msg+3,&f1,sizeof(float));
+    memcpy(msg+7,&f2,sizeof(float));
+    msg[11]=end_index;
+    msg[12]=crc8(msg+2,9);
+    msg_size=13;
+    return msg_size;
+}
+
+void ucPack::unpacketC2F(uint8_t &code, float &f1, float &f2){
+    code=payload[0];
+    memcpy(&f1, payload+1, sizeof(float));
+    memcpy(&f2, payload+5, sizeof(float));
 }
 
 uint8_t ucPack::packetC4F(const uint8_t code, const float f1, const float f2, const float f3, const float f4){
