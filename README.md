@@ -31,14 +31,24 @@ If you are on linux you need an STLINK v2 and you need to:<br>
 
 1. select `tools -> upload method -> stlink`
 2. press upload
-   If you are on macOS you can also upload just using the serial port.
-3. select `tools -> upload methos -> serial`
-4. press upload
+
+If you are on macOS you can also upload just using the serial port.<br>
+
+1. select `tools -> upload methos -> serial`
+2. press upload
+
+If you encounter issues, you can press **PC0** and **RESET** simultaneously, release only **RESET** and go in a sort of ***programming mode***.  You will see that onboard led fades.
+
+Detach and reattach stlink usb cable and you should be able to load your firmware without any issues.
+
+---
 
 *NOTE: if you encounter some issues on uploading, try to select `tools -> variant -> STM32F103RE`*
 
 *NOTE: it may necessary to erase memory of stm32 or load an empty program from serial if the board is bricked (a blink is provided in bin folder).*
 
 *NOTE: is imu returns all zeros, reset the board*
+
+---
 
 > ***Copyright © 2022 G. Bruno under MIT license***
