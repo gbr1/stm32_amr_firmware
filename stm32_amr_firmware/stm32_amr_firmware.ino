@@ -222,6 +222,8 @@ void loop() {
         motorA.setReference(f3);
         motorD.setReference(f4);
         systick_attach_callback(tick); 
+        uint8_t d = packeter.packetC1F('x',0.0);
+        serial_port.write(packeter.msg,d);
       }
       
       //stop the robot
