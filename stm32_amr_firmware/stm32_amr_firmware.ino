@@ -222,6 +222,8 @@ void loop() {
         motorA.setReference(f3);
         motorD.setReference(f4);
         systick_attach_callback(tick); 
+        uint8_t d = packeter.packetC1F('x',0.0);
+        serial_port.write(packeter.msg,d);
       }
       
       //stop the robot
@@ -236,6 +238,8 @@ void loop() {
         systick_attach_callback(tick); 
         mpu.setAccScale(0);
         mpu.setGyroScale(0);
+        uint8_t d = packeter.packetC1F('s',0.0);
+        serial_port.write(packeter.msg,d);
       }
 
       if (c=='G'){
