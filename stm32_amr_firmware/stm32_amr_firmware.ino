@@ -238,6 +238,8 @@ void loop() {
         systick_attach_callback(tick); 
         mpu.setAccScale(0);
         mpu.setGyroScale(0);
+        uint8_t d = packeter.packetC1F('s',0.0);
+        serial_port.write(packeter.msg,d);
       }
 
       if (c=='G'){
