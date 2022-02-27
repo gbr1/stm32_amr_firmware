@@ -24,6 +24,7 @@
 #include "encoder.h"
 
 Encoder::Encoder(timer_dev* Timer, unsigned char count_mode, uint8 pinA, uint8 pinB){
+  
   pinMode(pinA, INPUT_PULLUP);
   pinMode(pinB, INPUT_PULLUP);
 

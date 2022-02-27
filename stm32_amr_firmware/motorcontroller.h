@@ -53,6 +53,8 @@ private:
 
   float measure_memory[MEM_SIZE];
   int   id_memory;
+  uint8_t i;
+  float mean;
   
   void addMemory(float _val);
   
@@ -63,6 +65,7 @@ public:
   MotorController(uint8 _pwm, uint8 _in1, uint8 _in2,
                   timer_dev* _timenc, unsigned char _modec, uint8 _ch1, uint8 _ch2, bool _invert,
                   float _ratio, float _controller_freq);
+
   void setReference(float _val){reference=_val;}
   void setRadAtS(float _vel);
   float getRadAtS(){return measure;}

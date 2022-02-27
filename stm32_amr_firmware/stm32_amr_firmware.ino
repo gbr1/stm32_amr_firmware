@@ -20,18 +20,20 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- */
- 
+ */ 
 #include "board_pins.h"
 #include "motorcontroller.h"
 #include "ucPack.h"
 #include "imu.h"
 
+
 // packeters to manage communication
 ucPack packeter(100,65,35);
+uint8_t dim=0;
+float ff=0.0;
+
 
 uint16_t t=0;
-
 
 bool connected = false;
 
@@ -39,6 +41,7 @@ bool connected = false;
 uint8_t c;
 // floats
 float f1,f2,f3,f4;
+
 
 unsigned long timer_send        = 0;
 unsigned long timer_motor       = 0;
@@ -54,24 +57,23 @@ uint8_t battery_cycle=0;
 int cf=10;
 
 
-MotorController motorA(MOTOR_A_PWM, MOTOR_A_IN2, MOTOR_A_IN1, MOTOR_A_TIM, COUNT_BOTH_CHANNELS,MOTOR_A_CH1,MOTOR_A_CH2, false, MOTOR_RATIO, float(cf));
-MotorController motorB(MOTOR_B_PWM, MOTOR_B_IN2, MOTOR_B_IN1, MOTOR_B_TIM, COUNT_BOTH_CHANNELS,MOTOR_B_CH1,MOTOR_B_CH2, false, MOTOR_RATIO, float(cf));
-MotorController motorC(MOTOR_C_PWM, MOTOR_C_IN1, MOTOR_C_IN2, MOTOR_C_TIM, COUNT_BOTH_CHANNELS,MOTOR_C_CH1,MOTOR_C_CH2, true, MOTOR_RATIO, float(cf));
-MotorController motorD(MOTOR_D_PWM, MOTOR_D_IN1, MOTOR_D_IN2, MOTOR_D_TIM, COUNT_BOTH_CHANNELS,MOTOR_D_CH1,MOTOR_D_CH2, true, MOTOR_RATIO, float(cf));
 
-float ref=0.0;
 
 Imu mpu(I2C_SDA,I2C_SCL);
+float acc_scale, gyro_scale;
 
 bool led=false;
 uint16_t blink_time=1000;
 
 float timeout=0.0;
-bool checkTimeout = true;
+bool checkTimeout = false;
 
+MotorController motorA(MOTOR_A_PWM, MOTOR_A_IN2, MOTOR_A_IN1, MOTOR_A_TIM, COUNT_BOTH_CHANNELS,MOTOR_A_CH1,MOTOR_A_CH2, false, MOTOR_RATIO, float(cf));
+MotorController motorB(MOTOR_B_PWM, MOTOR_B_IN2, MOTOR_B_IN1, MOTOR_B_TIM, COUNT_BOTH_CHANNELS,MOTOR_B_CH1,MOTOR_B_CH2, false, MOTOR_RATIO, float(cf));
+MotorController motorC(MOTOR_C_PWM, MOTOR_C_IN1, MOTOR_C_IN2, MOTOR_C_TIM, COUNT_BOTH_CHANNELS,MOTOR_C_CH1,MOTOR_C_CH2, true, MOTOR_RATIO, float(cf));
+MotorController motorD(MOTOR_D_PWM, MOTOR_D_IN1, MOTOR_D_IN2, MOTOR_D_TIM, COUNT_BOTH_CHANNELS,MOTOR_D_CH1,MOTOR_D_CH2, true, MOTOR_RATIO, float(cf));
 
 void setup() { 
-  
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(BUTTON_PIN,INPUT_PULLUP);
 
@@ -98,10 +100,6 @@ void setup() {
     }
   }
 
-
-
-
-  
   afio_cfg_debug_ports(AFIO_DEBUG_SW_ONLY);
   afio_remap(AFIO_REMAP_TIM2_PARTIAL_1);
   
@@ -110,37 +108,41 @@ void setup() {
 
   serial_port.begin(115200);  
   
-  motorA.init();
-  motorB.init();
-  motorC.init();
-  motorD.init();
-
   //init mpu6050
   mpu.initialize(); //this require 3s
   mpu.setAccScale(0);
   mpu.setGyroScale(0);
   
-  systick_attach_callback(tick); 
-  
-  timer_timeout=millis();
+  systick_attach_callback(NULL);
+  motorA.init();
+  motorB.init();
+  motorC.init();
+  motorD.init();        
+  systick_attach_callback(tick);
   
 }
 
 
+
 void loop() {
+  
+  
   if (connected){
-    //joint publisher
-    if (timer_send>=10){ 
-      uint8_t dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
+    
+    // update motors controller
+    updateMotors();
+    
+    // joints publisher
+    if (timer_send>=10){
+      dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
       serial_port.write(packeter.msg,dim);
       timer_send=0;
     }
 
-    //imu publisher
+    // imu publisher
     if (timer_imu>=10){ 
       mpu.updateData(); 
-      float ff=0.0;
-      uint8_t dim = packeter.packetC8F('i',-mpu.getAccY(),mpu.getAccX(),-mpu.getAccZ(),-mpu.getGyroY(),mpu.getGyroX(),-mpu.getGyroZ(),mpu.getTemp(),ff);
+      dim = packeter.packetC8F('i',-mpu.getAccY(),mpu.getAccX(),-mpu.getAccZ(),-mpu.getGyroY(),mpu.getGyroX(),-mpu.getGyroZ(),mpu.getTemp(),ff);
       serial_port.write(packeter.msg,dim);
       timer_imu=0;
     }
@@ -155,14 +157,15 @@ void loop() {
     // battery publisher
     if (battery_cycle>=100){
       battery=battery*BATTERY_CONSTANT/100.0;
-      uint8_t dim = packeter.packetC1F('b',battery);
+      dim = packeter.packetC1F('b',battery);
       serial_port.write(packeter.msg,dim);
       battery=0.0;
       battery_cycle=0;
     }
   }
-  
-  if (((millis()-timer_timeout)>(timeout*1000))&&checkTimeout){
+
+  // timeout
+  if ((timer_timeout>(timeout*1000))&&checkTimeout){
     connected=false;
     checkTimeout=false;
     blink_time=1000;
@@ -174,10 +177,11 @@ void loop() {
     systick_attach_callback(tick); 
     mpu.setAccScale(0);
     mpu.setGyroScale(0);
-    uint8_t d = packeter.packetC1F('s',0.0);
-    serial_port.write(packeter.msg,d);
+    dim = packeter.packetC1F('s',ff);
+    serial_port.write(packeter.msg,dim);
   }
 
+  // blink
   if (timer_led>blink_time){
     led=!led;
     digitalWrite(LED_BUILTIN,led);
@@ -196,8 +200,8 @@ void loop() {
     if (!connected){
       if (c=='E'){
         packeter.unpacketC1F(c,timeout);
-        uint8_t d = packeter.packetC1F('e',timeout);
-        serial_port.write(packeter.msg,d);
+        dim = packeter.packetC1F('e',timeout);
+        serial_port.write(packeter.msg,dim);
         connected=true;
         blink_time=100;
         if (timeout<=0.0){
@@ -206,12 +210,12 @@ void loop() {
         else{
           checkTimeout=true;
         }
-        timer_timeout=millis();
+        timer_timeout=0;
       }
     }
     else{
       //update time
-      timer_timeout=millis();
+      timer_timeout=0;
       
       //joint control
       if (c=='J'){
@@ -222,8 +226,8 @@ void loop() {
         motorA.setReference(f3);
         motorD.setReference(f4);
         systick_attach_callback(tick); 
-        uint8_t d = packeter.packetC1F('x',0.0);
-        serial_port.write(packeter.msg,d);
+        dim = packeter.packetC1F('x',ff);
+        serial_port.write(packeter.msg,dim);
       }
       
       //stop the robot
@@ -238,12 +242,11 @@ void loop() {
         systick_attach_callback(tick); 
         mpu.setAccScale(0);
         mpu.setGyroScale(0);
-        uint8_t d = packeter.packetC1F('s',0.0);
-        serial_port.write(packeter.msg,d);
+        dim = packeter.packetC1F('s',ff);
+        serial_port.write(packeter.msg,dim);
       }
 
       if (c=='G'){
-        float acc_scale, gyro_scale;
         packeter.unpacketC2F(c,acc_scale,gyro_scale);
         if (acc_scale==2.0){
             mpu.setAccScale(0);
@@ -280,8 +283,8 @@ void loop() {
             }
           }
         }
-        uint8_t d = packeter.packetC2F('g',acc_scale,gyro_scale);
-        serial_port.write(packeter.msg,d);
+        dim = packeter.packetC2F('g',acc_scale,gyro_scale);
+        serial_port.write(packeter.msg,dim);
       }
     }
   } 
@@ -293,10 +296,12 @@ void loop() {
 // motors controllers update
 void updateMotors(){
   if (timer_motor>=cf){
+    systick_attach_callback(NULL); 
     motorA.update();
     motorB.update();
     motorC.update();
     motorD.update();
+    systick_attach_callback(tick); 
     timer_motor=0;
   }
 }
@@ -308,7 +313,5 @@ void tick(void){
   timer_imu++;
   timer_battery++;
   timer_led++;
-  if (connected){
-    updateMotors();
-  }
+  timer_timeout++;
 }

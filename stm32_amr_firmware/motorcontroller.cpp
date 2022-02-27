@@ -36,38 +36,41 @@ MotorController::MotorController(uint8 _pwm, uint8 _in1, uint8 _in2,
   ratio=_ratio;
   reference=0.0;
   error=0.0;
+  p_error=0.0;
   controller_freq=_controller_freq;
   rad_factor=1000.0*(2.0*PI/ratio)/controller_freq;
 
   clearMemory();
+  
   id_memory=0;
 
-  p_error=0;
-  c_i=0;
+  p_error=0.0;
+  c_i=0.0;
 
   measure=0.0;
   travel=0.0;
+  mean=0.0;
 
 }
 
 void MotorController::addMemory(float _val){
-  id_memory++;
   if (id_memory>=MEM_SIZE){
     id_memory=0;
   }
   measure_memory[id_memory]=_val;
+  id_memory++;
 }
 
 float MotorController::meanMemory(){
-  float mean=0.0;
-  for (uint8_t i=0; i<MEM_SIZE; i++){
-    mean+=measure_memory[i];
+  mean=0.0;
+  for (i=0; i<MEM_SIZE; i++){
+    mean=mean+measure_memory[i];
   }
   return mean/float(MEM_SIZE);
 }
 
 void MotorController::clearMemory(){
-  for (uint8_t i=0; i<MEM_SIZE; i++){
+  for (i=0; i<MEM_SIZE; i++){
     measure_memory[i]=0.0;
   }
 }
@@ -135,4 +138,6 @@ void MotorController::init(){
   clearMemory();
   reset();
   resetTravel();
+  error=0.0;
+  p_error=0.0;
 }
