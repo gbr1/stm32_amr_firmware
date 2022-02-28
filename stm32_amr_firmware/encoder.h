@@ -41,6 +41,7 @@ public:
   Encoder(timer_dev* , unsigned char , uint8 , uint8 );
   void reset();
   int16_t getCount();
+  void setOffset(int16_t );
   unsigned char getDirection();
   void invertPolarity(boolean);
 };

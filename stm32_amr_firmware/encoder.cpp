@@ -24,6 +24,7 @@
 #include "encoder.h"
 
 Encoder::Encoder(timer_dev* Timer, unsigned char count_mode, uint8 pinA, uint8 pinB){
+  
   pinMode(pinA, INPUT_PULLUP);
   pinMode(pinB, INPUT_PULLUP);
 
@@ -45,6 +46,10 @@ void Encoder::reset(){
 
 int16_t Encoder::getCount(){
   return timer_get_count(_TIMER);
+}
+
+void Encoder::setOffset(int16_t offset){
+  timer_set_count(_TIMER, offset);
 }
 
 unsigned char Encoder::getDirection(){

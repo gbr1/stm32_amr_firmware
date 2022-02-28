@@ -32,25 +32,26 @@ DCMotor::DCMotor(uint8 _pwm, uint8 _in1, uint8 _in2){
   pinMode(in2,OUTPUT);
 
   pwmWrite(pwm,0);
-  digitalWrite(in1,LOW);
-  digitalWrite(in2,LOW);
+  digitalWrite(in1,HIGH);
+  digitalWrite(in2,HIGH);
 }
 
 void DCMotor::setSpeed(int32_t val){
   if (val>=0){
-    pwmWrite(pwm, val);
     digitalWrite(in1,HIGH);
     digitalWrite(in2,LOW);
+    pwmWrite(pwm, val);
+
   }
   else{
-    pwmWrite(pwm, -val);
     digitalWrite(in1,LOW);
     digitalWrite(in2,HIGH);
+    pwmWrite(pwm, -val);
   }
 }
 
 void DCMotor::force_stop(){
   pwmWrite(pwm,0);
-  digitalWrite(in1,LOW);
-  digitalWrite(in2,LOW);
+  digitalWrite(in1,HIGH);
+  digitalWrite(in2,HIGH);
 }
