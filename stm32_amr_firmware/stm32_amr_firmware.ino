@@ -43,12 +43,12 @@ uint8_t c;
 float f1,f2,f3,f4;
 
 
-unsigned long timer_send        = 0;
-unsigned long timer_motor       = 0;
-unsigned long timer_imu         = 0;
-unsigned long timer_battery     = 0;
-unsigned long timer_led         = 0;
-unsigned long timer_timeout     = 0;
+volatile unsigned long timer_send        = 0;
+volatile unsigned long timer_motor       = 0;
+volatile unsigned long timer_imu         = 0;
+volatile unsigned long timer_battery     = 0;
+volatile unsigned long timer_led         = 0;
+volatile unsigned long timer_timeout     = 0;
 
 float battery=0.0;
 uint8_t battery_cycle=0;
@@ -113,13 +113,11 @@ void setup() {
   mpu.setAccScale(0);
   mpu.setGyroScale(0);
   
-  systick_attach_callback(NULL);
-  motorA.init();
-  motorB.init();
-  motorC.init();
-  motorD.init();        
+  motorA.start();
+  motorB.start();
+  motorC.start();
+  motorD.start();
   systick_attach_callback(tick);
-  
 }
 
 
@@ -130,7 +128,13 @@ void loop() {
   if (connected){
     
     // update motors controller
-    updateMotors();
+    if (timer_motor>=cf){
+      motorA.update();
+      motorB.update();
+      motorC.update();
+      motorD.update(); 
+      timer_motor=0;
+    }
     
     // joints publisher
     if (timer_send>=10){
@@ -169,12 +173,10 @@ void loop() {
     connected=false;
     checkTimeout=false;
     blink_time=1000;
-    systick_attach_callback(NULL);
     motorB.init();
     motorC.init();
     motorA.init();
     motorD.init();
-    systick_attach_callback(tick); 
     mpu.setAccScale(0);
     mpu.setGyroScale(0);
     dim = packeter.packetC1F('s',ff);
@@ -220,26 +222,22 @@ void loop() {
       //joint control
       if (c=='J'){
         packeter.unpacketC4F(c,f1,f2,f3,f4);
-        systick_attach_callback(NULL);
+        dim = packeter.packetC1F('x',ff);
+        serial_port.write(packeter.msg,dim);
         motorB.setReference(f1);
         motorC.setReference(f2);
         motorA.setReference(f3);
         motorD.setReference(f4);
-        systick_attach_callback(tick); 
-        dim = packeter.packetC1F('x',ff);
-        serial_port.write(packeter.msg,dim);
       }
       
       //stop the robot
       if (c=='S'){
         connected=false;
         blink_time=1000;
-        systick_attach_callback(NULL);
         motorB.init();
         motorC.init();
         motorA.init();
         motorD.init();
-        systick_attach_callback(tick); 
         mpu.setAccScale(0);
         mpu.setGyroScale(0);
         dim = packeter.packetC1F('s',ff);
@@ -290,21 +288,6 @@ void loop() {
   } 
 }
 
-
-
-
-// motors controllers update
-void updateMotors(){
-  if (timer_motor>=cf){
-    systick_attach_callback(NULL); 
-    motorA.update();
-    motorB.update();
-    motorC.update();
-    motorD.update();
-    systick_attach_callback(tick); 
-    timer_motor=0;
-  }
-}
 
 // here timers are incremented and motors controllers are updated
 void tick(void){

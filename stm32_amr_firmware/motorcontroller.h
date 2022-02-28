@@ -77,6 +77,8 @@ public:
   float getTravel(){return travel;}
   void resetTravel(){travel=0.0;}
 
+  void start();
+
 };
 
 #endif

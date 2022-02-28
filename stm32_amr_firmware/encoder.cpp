@@ -48,6 +48,10 @@ int16_t Encoder::getCount(){
   return timer_get_count(_TIMER);
 }
 
+void Encoder::setOffset(int16_t offset){
+  timer_set_count(_TIMER, offset);
+}
+
 unsigned char Encoder::getDirection(){
 	return *bb_perip(&(_TIMER->regs).gen->CR1, TIMER_CR1_DIR_BIT);
 }

@@ -141,3 +141,8 @@ void MotorController::init(){
   error=0.0;
   p_error=0.0;
 }
+
+void MotorController::start(){
+  init();
+  setOffset(-10); 
+}
