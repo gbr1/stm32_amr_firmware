@@ -21,6 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */ 
+
+// V1.1
+ 
 #include "board_pins.h"
 #include "motorcontroller.h"
 #include "ucPack.h"
