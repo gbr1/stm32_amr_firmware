@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */ 
 
-// V1.1
+// V1.1.1
  
 #include "board_pins.h"
 #include "motorcontroller.h"
@@ -215,6 +215,10 @@ void loop() {
         else{
           checkTimeout=true;
         }
+        motorB.init();
+        motorC.init();
+        motorA.init();
+        motorD.init();
         timer_timeout=0;
       }
     }
