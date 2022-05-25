@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */ 
 
-// V1.1.1
+// V1.1.2
  
 #include "board_pins.h"
 #include "motorcontroller.h"
@@ -76,6 +76,11 @@ MotorController motorB(MOTOR_B_PWM, MOTOR_B_IN2, MOTOR_B_IN1, MOTOR_B_TIM, COUNT
 MotorController motorC(MOTOR_C_PWM, MOTOR_C_IN1, MOTOR_C_IN2, MOTOR_C_TIM, COUNT_BOTH_CHANNELS,MOTOR_C_CH1,MOTOR_C_CH2, true, MOTOR_RATIO, float(cf));
 MotorController motorD(MOTOR_D_PWM, MOTOR_D_IN1, MOTOR_D_IN2, MOTOR_D_TIM, COUNT_BOTH_CHANNELS,MOTOR_D_CH1,MOTOR_D_CH2, true, MOTOR_RATIO, float(cf));
 
+void motor_update(void);
+HardwareTimer timer(1);
+
+
+
 void setup() { 
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(BUTTON_PIN,INPUT_PULLUP);
@@ -120,6 +125,15 @@ void setup() {
   motorB.start();
   motorC.start();
   motorD.start();
+
+  timer.pause();
+  timer.setPeriod(10000); // in microseconds
+  timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
+  timer.setCompare(TIMER_CH1, 1);      // overflow might be small
+  timer.attachCompare1Interrupt(motor_update);
+  timer.refresh();
+  //timer.resume();
+
   systick_attach_callback(tick);
 }
 
@@ -129,21 +143,22 @@ void loop() {
   
   
   if (connected){
-    
+    /*
     // update motors controller
     if (timer_motor>=cf){
+      timer_motor=0;
       motorA.update();
       motorB.update();
       motorC.update();
       motorD.update(); 
-      timer_motor=0;
     }
+    */
     
     // joints publisher
     if (timer_send>=10){
+      timer_send=0;
       dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
       serial_port.write(packeter.msg,dim);
-      timer_send=0;
     }
 
     // imu publisher
@@ -175,6 +190,7 @@ void loop() {
   if ((timer_timeout>(timeout*1000))&&checkTimeout){
     connected=false;
     checkTimeout=false;
+    timer.pause();
     blink_time=1000;
     motorB.init();
     motorC.init();
@@ -215,10 +231,15 @@ void loop() {
         else{
           checkTimeout=true;
         }
+        
         motorB.init();
         motorC.init();
         motorA.init();
         motorD.init();
+
+        timer.refresh();
+        timer.resume();
+        
         timer_timeout=0;
       }
     }
@@ -241,6 +262,7 @@ void loop() {
       if (c=='S'){
         connected=false;
         blink_time=1000;
+        timer.pause();
         motorB.init();
         motorC.init();
         motorA.init();
@@ -304,4 +326,11 @@ void tick(void){
   timer_battery++;
   timer_led++;
   timer_timeout++;
+}
+
+void motor_update(void){
+  motorA.update();
+  motorB.update();
+  motorC.update();
+  motorD.update(); 
 }
