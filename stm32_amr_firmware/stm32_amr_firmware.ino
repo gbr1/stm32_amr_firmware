@@ -84,6 +84,8 @@ HardwareTimer timer(1);
 void setup() { 
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(BUTTON_PIN,INPUT_PULLUP);
+  pinMode(PA12,OUTPUT);
+  digitalWrite(PA12,LOW);
 
   if (digitalRead(BUTTON_PIN)==LOW){
     serial_port.begin(115200);
@@ -329,8 +331,10 @@ void tick(void){
 }
 
 void motor_update(void){
+  digitalWrite(PA12,HIGH);
   motorA.update();
   motorB.update();
   motorC.update();
   motorD.update(); 
+  digitalWrite(PA12,LOW);
 }
