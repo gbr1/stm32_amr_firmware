@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */ 
 
-// V1.1.2
+// V1.1.3
  
 #include "board_pins.h"
 #include "motorcontroller.h"
@@ -70,6 +70,7 @@ uint16_t blink_time=1000;
 
 float timeout=0.0;
 bool checkTimeout = false;
+bool joints_update = false;
 
 MotorController motorA(MOTOR_A_PWM, MOTOR_A_IN2, MOTOR_A_IN1, MOTOR_A_TIM, COUNT_BOTH_CHANNELS,MOTOR_A_CH1,MOTOR_A_CH2, false, MOTOR_RATIO, float(cf));
 MotorController motorB(MOTOR_B_PWM, MOTOR_B_IN2, MOTOR_B_IN1, MOTOR_B_TIM, COUNT_BOTH_CHANNELS,MOTOR_B_CH1,MOTOR_B_CH2, false, MOTOR_RATIO, float(cf));
@@ -134,7 +135,20 @@ void setup() {
   timer.setCompare(TIMER_CH1, 1);      // overflow might be small
   timer.attachCompare1Interrupt(motor_update);
   timer.refresh();
-  //timer.resume();
+  timer.resume();
+
+  //motor warm up
+  motorB.setReference(0.05);
+  motorC.setReference(0.05);
+  motorA.setReference(0.05);
+  motorD.setReference(0.05);
+  delay(1000);
+  motorB.setReference(-0.05);
+  motorC.setReference(-0.05);
+  motorA.setReference(-0.05);
+  motorD.setReference(-0.05);
+  delay(1000);
+  timer.pause();
 
   systick_attach_callback(tick);
 }
@@ -157,10 +171,12 @@ void loop() {
     */
     
     // joints publisher
-    if (timer_send>=10){
+    if (joints_update){
+    //if (timer_send>=10){
       timer_send=0;
-      dim = packeter.packetC4F('j',float(motorB.getRadAtS()),float(motorC.getRadAtS()),float(motorA.getRadAtS()),float(motorD.getRadAtS()));
+      dim = packeter.packetC4F('j',motorB.getRadAtS(),motorC.getRadAtS(),motorA.getRadAtS(),motorD.getRadAtS());
       serial_port.write(packeter.msg,dim);
+      joints_update=false;
     }
 
     // imu publisher
@@ -336,5 +352,6 @@ void motor_update(void){
   motorB.update();
   motorC.update();
   motorD.update(); 
+  joints_update=true;
   digitalWrite(PA12,LOW);
 }
