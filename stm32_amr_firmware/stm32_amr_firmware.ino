@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */ 
 
-// V1.1.3
+// V1.2
  
 #include "board_pins.h"
 #include "motorcontroller.h"
@@ -30,8 +30,10 @@
 #include "imu.h"
 
 
+
+
 // packeters to manage communication
-ucPack packeter(100,65,35);
+ucPack packeter(210,65,35);
 uint8_t dim=0;
 float ff=0.0;
 
@@ -71,6 +73,8 @@ uint16_t blink_time=1000;
 float timeout=0.0;
 bool checkTimeout = false;
 bool joints_update = false;
+bool ack_joints=false;
+bool references_update=false;
 
 MotorController motorA(MOTOR_A_PWM, MOTOR_A_IN2, MOTOR_A_IN1, MOTOR_A_TIM, COUNT_BOTH_CHANNELS,MOTOR_A_CH1,MOTOR_A_CH2, false, MOTOR_RATIO, float(cf));
 MotorController motorB(MOTOR_B_PWM, MOTOR_B_IN2, MOTOR_B_IN1, MOTOR_B_TIM, COUNT_BOTH_CHANNELS,MOTOR_B_CH1,MOTOR_B_CH2, false, MOTOR_RATIO, float(cf));
@@ -80,14 +84,34 @@ MotorController motorD(MOTOR_D_PWM, MOTOR_D_IN1, MOTOR_D_IN2, MOTOR_D_TIM, COUNT
 void motor_update(void);
 HardwareTimer timer(1);
 
+bool motor_is_updating = false;
+bool serial_used = false;
 
 
 void setup() { 
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(BUTTON_PIN,INPUT_PULLUP);
-  pinMode(PA12,OUTPUT);
-  digitalWrite(PA12,LOW);
 
+  pinMode(PA12,OUTPUT);
+  pinMode(PA8,OUTPUT);
+  pinMode(PA11,OUTPUT);
+  pinMode(PB12,OUTPUT);
+  pinMode(PB13,OUTPUT);
+  pinMode(PB14,OUTPUT);
+
+  digitalWrite(PA12,LOW);
+  digitalWrite(PA8,LOW);
+  digitalWrite(PA11,LOW);
+  digitalWrite(PB12,LOW);
+  digitalWrite(PB13,LOW);
+  digitalWrite(PB14,LOW);
+
+  debug_port.begin(115200);
+  debug_port.println("debug");
+
+  
+
+  // trap to not enable afio remapping
   if (digitalRead(BUTTON_PIN)==LOW){
     serial_port.begin(115200);
     while(1){
@@ -129,6 +153,7 @@ void setup() {
   motorC.start();
   motorD.start();
 
+  //enable TIM1
   timer.pause();
   timer.setPeriod(10000); // in microseconds
   timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
@@ -138,17 +163,13 @@ void setup() {
   timer.resume();
 
   //motor warm up
-  motorB.setReference(0.05);
-  motorC.setReference(0.05);
-  motorA.setReference(0.05);
-  motorD.setReference(0.05);
-  delay(1000);
-  motorB.setReference(-0.05);
-  motorC.setReference(-0.05);
-  motorA.setReference(-0.05);
-  motorD.setReference(-0.05);
-  delay(1000);
+  warm_up();
+
   timer.pause();
+  motorB.force_stop();
+  motorC.force_stop();
+  motorA.force_stop();
+  motorD.force_stop();
 
   systick_attach_callback(tick);
 }
@@ -156,55 +177,59 @@ void setup() {
 
 
 void loop() {
-  
-  
   if (connected){
-    /*
-    // update motors controller
-    if (timer_motor>=cf){
-      timer_motor=0;
+    // check sync flag - 10ms timing by TIM1 inturrupt function
+    if (joints_update){
+        
+      digitalWrite(PA12,HIGH);
+
+      if (references_update){
+        motorB.setReference(f1);
+        motorC.setReference(f2);
+        motorA.setReference(f3);
+        motorD.setReference(f4);
+        references_update=false;
+      }
+      
       motorA.update();
       motorB.update();
       motorC.update();
       motorD.update(); 
-    }
-    */
-    
-    // joints publisher
-    if (joints_update){
-    //if (timer_send>=10){
-      timer_send=0;
+
+      digitalWrite(PA12,LOW);
+
+      digitalWrite(PA8,HIGH);
+
+      // joints publisher
       dim = packeter.packetC4F('j',motorB.getRadAtS(),motorC.getRadAtS(),motorA.getRadAtS(),motorD.getRadAtS());
       serial_port.write(packeter.msg,dim);
       joints_update=false;
-    }
 
-    // imu publisher
-    if (timer_imu>=10){ 
+      // imu publisher
       mpu.updateData(); 
       dim = packeter.packetC8F('i',-mpu.getAccY(),mpu.getAccX(),-mpu.getAccZ(),-mpu.getGyroY(),mpu.getGyroX(),-mpu.getGyroZ(),mpu.getTemp(),ff);
       serial_port.write(packeter.msg,dim);
-      timer_imu=0;
-    }
 
-    // battery update
-    if (timer_battery>=10){
       battery+=analogRead(BATTERY_PIN);
       battery_cycle++;
-      timer_battery=0;
+
+      if (battery_cycle>=100){
+        battery=battery*BATTERY_CONSTANT/100.0;
+        dim = packeter.packetC1F('b',battery);
+        serial_port.write(packeter.msg,dim);
+        battery=0.0;
+        battery_cycle=0;
+      }
+
+      digitalWrite(PA8,LOW);
+
     }
 
-    // battery publisher
-    if (battery_cycle>=100){
-      battery=battery*BATTERY_CONSTANT/100.0;
-      dim = packeter.packetC1F('b',battery);
-      serial_port.write(packeter.msg,dim);
-      battery=0.0;
-      battery_cycle=0;
-    }
   }
+  
 
-  // timeout
+  // timeout is disabled, preserved if in the future is needed
+  /*
   if ((timer_timeout>(timeout*1000))&&checkTimeout){
     connected=false;
     checkTimeout=false;
@@ -219,23 +244,30 @@ void loop() {
     dim = packeter.packetC1F('s',ff);
     serial_port.write(packeter.msg,dim);
   }
+  */
 
   // blink
+  
   if (timer_led>blink_time){
     led=!led;
     digitalWrite(LED_BUILTIN,led);
     timer_led=0;
   }
   
+  // data receiving blocks
+  digitalWrite(PB13,HIGH);
   
+  //debug_port.println("r");
   // check serial
   while(serial_port.available()>0){
     packeter.buffer.push(serial_port.read()); 
   }
 
+
   // check if any command was sent
-  while(packeter.checkPayload()){
+  if(packeter.checkPayload()){
     c=packeter.payloadTop();
+
     if (!connected){
       if (c=='E'){
         packeter.unpacketC1F(c,timeout);
@@ -243,12 +275,14 @@ void loop() {
         serial_port.write(packeter.msg,dim);
         connected=true;
         blink_time=100;
+        /*
         if (timeout<=0.0){
           checkTimeout=false;
         }
         else{
           checkTimeout=true;
         }
+        */
         
         motorB.init();
         motorC.init();
@@ -258,23 +292,36 @@ void loop() {
         timer.refresh();
         timer.resume();
         
-        timer_timeout=0;
+        //timer_timeout=0;
       }
     }
     else{
+
       //update time
-      timer_timeout=0;
+      //timer_timeout=0;
       
       //joint control
       if (c=='J'){
+        digitalWrite(PB14,LOW);
+        digitalWrite(PA11,HIGH);
         packeter.unpacketC4F(c,f1,f2,f3,f4);
-        dim = packeter.packetC1F('x',ff);
-        serial_port.write(packeter.msg,dim);
-        motorB.setReference(f1);
-        motorC.setReference(f2);
-        motorA.setReference(f3);
-        motorD.setReference(f4);
-      }
+        ack_joints=true;
+        references_update=true;
+        //timer.pause();
+        /*
+        debug_port.print(f1);
+        debug_port.print(" ");
+        debug_port.print(f2);
+        debug_port.print(" ");
+        debug_port.print(f3);
+        debug_port.print(" ");
+        debug_port.println(f4);
+        */
+        //timer.refresh();
+        //timer.resume();  
+        digitalWrite(PA11,LOW);
+      }else
+
       
       //stop the robot
       if (c=='S'){
@@ -289,7 +336,8 @@ void loop() {
         mpu.setGyroScale(0);
         dim = packeter.packetC1F('s',ff);
         serial_port.write(packeter.msg,dim);
-      }
+      } else
+
 
       if (c=='G'){
         packeter.unpacketC2F(c,acc_scale,gyro_scale);
@@ -331,27 +379,71 @@ void loop() {
         dim = packeter.packetC2F('g',acc_scale,gyro_scale);
         serial_port.write(packeter.msg,dim);
       }
+      else{
+        digitalWrite(PB14,HIGH);
+        //debug_port.println("C not detected");
+      }
+
     }
+
+
   } 
+  digitalWrite(PB13,LOW);
+
+  // ack ros2 node that joints are updated
+  if (ack_joints){
+    dim = packeter.packetC1F('x',ff);
+    serial_port.write(packeter.msg,dim);
+    ack_joints=false;
+  }
 }
 
 
-// here timers are incremented and motors controllers are updated
+// here timers are incremented
 void tick(void){
-  timer_motor++;
-  timer_send++;
-  timer_imu++;
-  timer_battery++;
   timer_led++;
-  timer_timeout++;
+  //timer_timeout++;
 }
 
+// interrupt function for TIM1 that enabled motors update at 100Hz
 void motor_update(void){
-  digitalWrite(PA12,HIGH);
-  motorA.update();
-  motorB.update();
-  motorC.update();
-  motorD.update(); 
+  //digitalWrite(PA12,HIGH); 
+  //sync flag for loop
   joints_update=true;
-  digitalWrite(PA12,LOW);
+  //digitalWrite(PA12,LOW); 
+}
+
+
+void warm_up(){
+  motorB.setReference(0.001);
+  motorC.setReference(0.001);
+  motorA.setReference(0.001);
+  motorD.setReference(0.001);
+  unsigned long t=0;
+  t=millis();
+  while(millis()-t<100){
+    if (joints_update){
+      motorA.update();
+      motorB.update();
+      motorC.update();
+      motorD.update(); 
+      joints_update=false;
+    }
+  }
+  
+  motorB.setReference(-0.001);
+  motorC.setReference(-0.001);
+  motorA.setReference(-0.001);
+  motorD.setReference(-0.001);
+  t=millis();
+  while(millis()-t<100){
+    if (joints_update){
+      motorA.update();
+      motorB.update();
+      motorC.update();
+      motorD.update(); 
+      joints_update=false;
+    }
+  }
+  
 }

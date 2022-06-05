@@ -28,8 +28,10 @@ ucPack::ucPack(const uint8_t buffer_size, const uint8_t start_index, const uint8
     this->start_index=start_index;
     this->end_index=end_index;
     payload=new uint8_t[buffer_size];
+    //payload=payload_array;
     payload_size = 0;
     msg = new uint8_t[buffer_size];
+    //msg=msg_array;
     msg_size = 0;
 }
 
@@ -43,7 +45,6 @@ bool ucPack::checkPayload(){
     if (buffer.isEmpty()){
         return false;
     }
-    
     //check the index byte
     while ((buffer.top()!=start_index)&&(buffer.getSize()>0)){
         buffer.pop(); //discard the first byte
@@ -69,18 +70,19 @@ bool ucPack::checkPayload(){
     
     //crc checking
     //memcpy(payload,buffer.ptr()+2,payload_size);
-    for(uint8_t i=0; i<payload_size;i++){
+    for(i=0; i<payload_size;i++){
         payload[i]=buffer[i+2];
     }
-    
+
+
     if (crc8(payload,payload_size)!=buffer[3+payload_size]){
         buffer.pop(); //delete the index, so it is possible to recheck
         return false;
     }
-    
+
 
     //clear the buffer
-    for (uint8_t i=0; i<4+payload_size; i++){     
+    for (i=0; i<4+payload_size; i++){     
         buffer.pop();
     }
     payload_size=0;
@@ -96,22 +98,22 @@ void ucPack::show(){
 }*/
 
 uint8_t ucPack::crc8(const uint8_t *data, const uint8_t size){
-    uint8_t crc = 0x00;
-    uint8_t extract;
-    uint8_t sum;
-    for(uint8_t i=0;i<size;i++){
-        extract = *data;
-        for (uint8_t j = 8; j>0; j--){
-            sum = (crc ^ extract) & 0x01;
-            crc >>= 1;
-            if (sum){
-                crc ^= 0x8C;
+    crc_crc = 0x00;
+    crc_extract;
+    crc_sum;
+    for(crc_i=0;crc_i<size;crc_i++){
+        crc_extract = *data;
+        for (crc_j = 8; crc_j>0; crc_j--){
+            crc_sum = (crc_crc ^ crc_extract) & 0x01;
+            crc_crc >>= 1;
+            if (crc_sum){
+                crc_crc ^= 0x8C;
             }
-            extract >>= 1;
+            crc_extract >>= 1;
         }
         data++;
     }
-    return crc;
+    return crc_crc;
 }
 
 uint8_t ucPack::payloadTop(){

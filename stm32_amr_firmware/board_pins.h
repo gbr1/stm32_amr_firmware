@@ -28,6 +28,7 @@
 
 #define LED_BUILTIN PC13
 #define serial_port Serial1
+#define debug_port Serial2
 #define USE_STM32_HW_SERIAL //is Serial1
 
 #define BATTERY_PIN PA5

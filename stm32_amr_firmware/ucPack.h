@@ -30,6 +30,9 @@
 #include <string.h>
 //#include <stdarg.h>
 
+//static uint8_t payload_array[21];
+//static uint8_t msg_array[21];
+
 class ucPack {
     private:
         uint8_t start_index;
@@ -37,6 +40,10 @@ class ucPack {
         uint8_t * payload;
         uint8_t payload_size;
         uint8_t msg_size;
+ 
+
+
+        uint8_t crc_crc, crc_sum, crc_extract, crc_i, crc_j, i;
     public:
         uint8_t * msg;
         CircularBuffer buffer;

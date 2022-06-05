@@ -93,7 +93,7 @@ void MotorController::setRadAtS(float _val){
 
 void MotorController::update(){
   // get measure
-  measure=getCount()*rad_factor;
+  measure=float(getCount())*rad_factor;
   //  reset encoder
   reset();
 
@@ -102,7 +102,7 @@ void MotorController::update(){
   
   //get the moving average
   measure=meanMemory();
-  travel+=measure*controller_freq/1000.0;
+  //travel+=measure*controller_freq/1000.0;
     
   //error
   error=reference-measure;
