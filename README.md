@@ -11,6 +11,30 @@ left_front_joint (B) +-------+ right_front_joint (C)
 left_rear_joint (A)  +-------+ right_rear_joint (D)
 ```
 
+## Info
+
+You can read some data timing by checking these pins:
+
+- `PA12`, motors controller 
+
+- `PA8`, joints + imu + battery publishers
+
+- `PB13`, data receiving and decoding
+
+- `PB14`, message is not decoded
+
+- `PA11`, joints references are decoded
+
+<br>
+
+Possible setups for imu:
+
+- 2/4/8/16 g
+
+- 250/500/1000/2000 °/s
+
+---
+
 ## How to install the stm32duino core
 
 1. Install Arduino IDE (tested on IDE 2 beta10 and IDE 1.8.13);
