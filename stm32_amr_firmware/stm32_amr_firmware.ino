@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */ 
 
-// V1.2
+// V1.2.1
  
 #include "board_pins.h"
 #include "motorcontroller.h"
@@ -54,6 +54,7 @@ volatile unsigned long timer_imu         = 0;
 volatile unsigned long timer_battery     = 0;
 volatile unsigned long timer_led         = 0;
 volatile unsigned long timer_timeout     = 0;
+volatile uint16_t timer_cut = 0;
 
 float battery=0.0;
 uint8_t battery_cycle=0;
@@ -267,6 +268,7 @@ void loop() {
   // check if any command was sent
   if(packeter.checkPayload()){
     c=packeter.payloadTop();
+    timer_cut=0;
 
     if (!connected){
       if (c=='E'){
@@ -291,6 +293,7 @@ void loop() {
 
         timer.refresh();
         timer.resume();
+        timer_cut=0;
         
         //timer_timeout=0;
       }
@@ -325,17 +328,7 @@ void loop() {
       
       //stop the robot
       if (c=='S'){
-        connected=false;
-        blink_time=1000;
-        timer.pause();
-        motorB.init();
-        motorC.init();
-        motorA.init();
-        motorD.init();
-        mpu.setAccScale(0);
-        mpu.setGyroScale(0);
-        dim = packeter.packetC1F('s',ff);
-        serial_port.write(packeter.msg,dim);
+        stop_robot();
       } else
 
 
@@ -396,12 +389,17 @@ void loop() {
     serial_port.write(packeter.msg,dim);
     ack_joints=false;
   }
+
+  if (connected && (timer_cut>500)){
+    stop_robot();
+  }
 }
 
 
 // here timers are incremented
 void tick(void){
   timer_led++;
+  timer_cut++;
   //timer_timeout++;
 }
 
@@ -446,4 +444,19 @@ void warm_up(){
     }
   }
   
+}
+
+
+void stop_robot(){
+  connected=false;
+  blink_time=1000;
+  timer.pause();
+  motorB.init();
+  motorC.init();
+  motorA.init();
+  motorD.init();
+  mpu.setAccScale(0);
+  mpu.setGyroScale(0);
+  dim = packeter.packetC1F('s',ff);
+  serial_port.write(packeter.msg,dim);
 }
