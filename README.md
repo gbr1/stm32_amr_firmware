@@ -1,6 +1,26 @@
 # stm32_amr_firmware
 
-## How connect motor
+## NOTE
+This branch move the communication on serial2 accessible from pins.
+<br>
+You need to use an USB to serial adapter.
+<br>
+Here the connections:
+
+```
++-----+         +-----+
+| Tx2 |    ->   |  Rx |
+| Rx2 |   <-    |  Tx |
+| GND |   <->   | GND |
+| +5V |   <-    | +5V | This is optional, it is required if you want to use the board without the external battery
++-----+         +-----+
+
+```
+
+***Note: The USB to serial adapter must be setted on 3V3*** 
+
+
+## How to connect motors
 
 ```
 left_front_joint (B) +-------+ right_front_joint (C)
